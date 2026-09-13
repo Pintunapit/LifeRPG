@@ -12,13 +12,32 @@ export const SignupPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
 
   const navigate = useNavigate();
   const { showToast } = useToast();
 
+  // Auto-retry after countdown when backend is waking up
+  const startWakeupRetry = React.useCallback((retryFn: () => void) => {
+    setIsWakingUp(true);
+    let count = 25;
+    setRetryCountdown(count);
+    const interval = setInterval(() => {
+      count--;
+      setRetryCountdown(count);
+      if (count <= 0) {
+        clearInterval(interval);
+        setIsWakingUp(false);
+        setError('');
+        retryFn();
+      }
+    }, 1000);
+  }, []);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (isLoading || isWakingUp) return;
     if (!name.trim() || !email.trim() || !password.trim()) {
       setError('Please fill in all character fields.');
       return;
@@ -35,11 +54,21 @@ export const SignupPage: React.FC = () => {
       showToast(`Welcome to Life RPG, ${name}! Your character is forged.`, 'success', 'Character Created');
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-up failed. Please try again.');
+      const msg = err instanceof Error ? err.message : 'Sign-up failed. Please try again.';
+      if (msg.includes('waking up') || msg.includes('cold start')) {
+        setError(msg);
+        startWakeupRetry(() => {
+          const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+          handleSignup(fakeEvent);
+        });
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-rpg-dark text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
@@ -133,10 +162,16 @@ export const SignupPage: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isWakingUp}
             className="w-full py-3 rounded-xl rpg-button-gold text-sm font-extrabold uppercase tracking-wider shadow-glow-gold flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
           >
-            <span>{isLoading ? 'Forging...' : 'Create Character'}</span>
+            <span>
+              {isWakingUp
+                ? `Server waking up… retry in ${retryCountdown}s`
+                : isLoading
+                  ? 'Forging...'
+                  : 'Create Character'}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

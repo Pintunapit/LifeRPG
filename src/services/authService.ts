@@ -93,8 +93,24 @@ export const authService = {
     email: string,
     password: string
   ): Promise<AuthUser> => {
-    // Create user server-side
-    await authApi.signup(name, email, password);
+    // Create user server-side (with retry for Render cold-start)
+    try {
+      await authApi.signup(name, email, password);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // "Failed to fetch" = backend is asleep (Render free tier cold start)
+      if (msg === 'Failed to fetch' || msg.includes('fetch')) {
+        throw new Error(
+          'Server is waking up — please wait 20–30 seconds and try again. ' +
+          '(Render free tier cold start)'
+        );
+      }
+      // Email already taken
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('duplicate')) {
+        throw new Error('An account with this email already exists. Please log in instead.');
+      }
+      throw e;
+    }
 
     // Sign in to get the browser session
     const { data, error } = await supabase.auth.signInWithPassword({
