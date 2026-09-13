@@ -39,13 +39,19 @@ const adminSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 // ── Express setup ─────────────────────────────────────────────────────────────
 const app = express();
-const PORT = Number(process.env.BACKEND_PORT || 4000);
+// Render injects PORT automatically; fall back to BACKEND_PORT for local dev
+const PORT = Number(process.env.PORT || process.env.BACKEND_PORT || 4000);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests from any localhost port (covers Vite's dynamic port assignment)
-    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+    // Allow localhost (dev) and the configured production frontend origin
+    const allowed = [FRONTEND_ORIGIN];
+    if (
+      !origin ||
+      /^http:\/\/localhost:\d+$/.test(origin) ||
+      allowed.some(o => origin === o || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com'))
+    ) {
       callback(null, true);
     } else {
       callback(new Error(`CORS: origin ${origin} not allowed`));

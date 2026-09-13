@@ -1,5 +1,8 @@
 /**
- * Thin HTTP client for the LifeRPG Express backend (port 4000).
+ * Thin HTTP client for the LifeRPG Express backend.
+ *
+ * In development:  points to http://localhost:4000
+ * In production:   reads VITE_BACKEND_URL env var (set in Render/Vercel dashboard)
  *
  * Every call automatically attaches the Supabase JWT from the current
  * browser session so the backend can verify the user identity.
@@ -23,7 +26,8 @@ import type {
   NotificationItem
 } from '../types';
 
-const BASE = 'http://localhost:4000';
+const BASE = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '')
+  ?? 'http://localhost:4000';
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
 

@@ -1,0 +1,44 @@
+services:
+  # ── Frontend (Static Site) ─────────────────────────────────────────────────
+  - type: web
+    name: liferpg-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_BACKEND_URL
+        sync: false
+
+  # ── Backend (Node.js Web Service) ─────────────────────────────────────────
+  - type: web
+    name: liferpg-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.mjs
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: BACKEND_PORT
+        value: 10000
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: NODE_VERSION
+        value: 20.11.0
